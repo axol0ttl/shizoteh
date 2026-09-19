@@ -65,14 +65,27 @@ DEFAULT_CLIENT_CONFIG = {
 def load_remote_config() -> dict:
     """
     Загружает серверный конфиг с GitHub.
+    Сначала пробует GitHub API (с заголовком raw), так как он обновляется мгновенно
+    и не кешируется на 5 минут CDN-серверами Fastly (в отличие от raw.githubusercontent.com).
+    При превышении лимитов или сбое делает fallback на raw URL.
     Возвращает словарь с полями: minecraft_version, fabric_loader_version, server_ip.
     """
-    import time
+    # 1. Пробуем GitHub API для мгновенного получения свежей версии
+    api_url = f"{GITHUB_API_BASE}/contents/launcher_config.json"
+    headers = {
+        "Accept": "application/vnd.github.v3.raw",
+        "User-Agent": "ShizotehLauncher",
+    }
     try:
-        # Добавляем timestamp и no-cache заголовки для обхода Fastly/GitHub CDN кеша (max-age=300)
-        params = {"t": int(time.time())}
-        headers = {"Cache-Control": "no-cache", "Pragma": "no-cache"}
-        resp = requests.get(REMOTE_CONFIG_URL, params=params, headers=headers, timeout=10)
+        resp = requests.get(api_url, headers=headers, timeout=10)
+        if resp.status_code == 200:
+            return resp.json()
+    except Exception:
+        pass
+
+    # 2. Fallback на raw URL
+    try:
+        resp = requests.get(REMOTE_CONFIG_URL, timeout=10)
         resp.raise_for_status()
         config = resp.json()
         return config
