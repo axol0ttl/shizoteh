@@ -14,10 +14,13 @@ import json
 import os
 import platform
 import subprocess
+import time
 import uuid
 from typing import Callable
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 # Mojang API URLs
 VERSION_MANIFEST_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
@@ -25,6 +28,30 @@ ASSETS_BASE_URL = "https://resources.download.minecraft.com"
 
 # Fabric Meta API
 FABRIC_META_URL = "https://meta.fabricmc.net/v2/versions/loader/{mc_version}/{loader_version}/profile/json"
+
+# Количество попыток скачивания и задержка между ними
+MAX_RETRIES = 5
+RETRY_BACKOFF = 1.5  # секунды (экспоненциально: 1.5, 3, 6, 12, 24)
+
+
+def _create_session() -> requests.Session:
+    """Создаёт requests.Session с автоматическим retry на сетевые ошибки."""
+    session = requests.Session()
+    retry_strategy = Retry(
+        total=MAX_RETRIES,
+        backoff_factor=RETRY_BACKOFF,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET"],
+        raise_on_status=False,
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy, pool_maxsize=10)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
+
+
+# Глобальная сессия с retry
+_session = _create_session()
 
 
 def get_os_name() -> str:
@@ -70,7 +97,7 @@ def _download_file(
     label: str = ""
 ) -> None:
     """
-    Скачивает файл, если он не существует или SHA1 не совпадает.
+    Скачивает файл с retry-логикой при сетевых ошибках.
 
     Args:
         url: URL для скачивания.
@@ -92,18 +119,34 @@ def _download_file(
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
 
-    resp = requests.get(url, stream=True, timeout=60)
-    resp.raise_for_status()
+    last_error = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            resp = _session.get(url, stream=True, timeout=30)
+            resp.raise_for_status()
 
-    total = int(resp.headers.get("content-length", 0))
-    downloaded = 0
+            total = int(resp.headers.get("content-length", 0))
+            downloaded = 0
 
-    with open(path, "wb") as f:
-        for chunk in resp.iter_content(chunk_size=8192):
-            f.write(chunk)
-            downloaded += len(chunk)
-            if progress_callback and total > 0:
-                progress_callback(label or os.path.basename(path), downloaded / total)
+            with open(path, "wb") as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if progress_callback and total > 0:
+                        progress_callback(label or os.path.basename(path), downloaded / total)
+            return  # Успешно скачано
+
+        except (requests.ConnectionError, requests.Timeout, OSError) as e:
+            last_error = e
+            if attempt < MAX_RETRIES:
+                wait = RETRY_BACKOFF * (2 ** (attempt - 1))
+                time.sleep(wait)
+            continue
+
+    # Все попытки исчерпаны
+    raise ConnectionError(
+        f"Не удалось скачать {url} после {MAX_RETRIES} попыток: {last_error}"
+    )
 
 
 def _check_library_rules(library: dict) -> bool:
