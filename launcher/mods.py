@@ -5,8 +5,11 @@ mods.py — Синхронизация модов с GitHub-репозитори
 скачивает недостающие моды, обнаруживает лишние моды у клиента.
 """
 
+import json
 import os
+import re
 from typing import Callable
+from urllib.parse import quote
 
 import requests
 
@@ -29,14 +32,103 @@ class ModInfo:
 def get_remote_mods() -> list[ModInfo]:
     """
     Получает список всех модов из GitHub-репозитория.
-    Рекурсивно обходит все подпапки в MODs/.
+    Использует многоуровневый подход:
+    1. GitHub Git Trees API (1 запрос на всё дерево репозитория вместо десятков)
+    2. GitHub Web Scraping (если превышен лимит 60 req/h unauthenticated API)
+    3. GitHub Contents API (рекурсивный обход подпапок)
 
     Returns:
         Список ModInfo со всеми .jar файлами.
     """
+    # 1. Пробуем Git Tree API (всего 1 запрос)
+    mods = _get_mods_from_git_tree()
+    if mods is not None:
+        return mods
+
+    # 2. Если API вернул ошибку (например, 403 Rate Limit), парсим веб-интерфейс GitHub (без лимитов API)
+    mods = _get_mods_from_web()
+    if mods is not None:
+        return mods
+
+    # 3. Fallback: рекурсивный обход Contents API
     mods = []
     _scan_github_dir("MODs", mods, "")
     return mods
+
+
+def _get_mods_from_git_tree() -> list[ModInfo] | None:
+    """Получает список модов через Git Trees API (1 HTTP-запрос)."""
+    url = f"{GITHUB_API_BASE}/git/trees/main?recursive=1"
+    headers = {"User-Agent": "ShizotehLauncher"}
+    try:
+        resp = requests.get(url, headers=headers, timeout=15)
+        if resp.status_code != 200:
+            return None
+        tree = resp.json().get("tree", [])
+        mods = []
+        for item in tree:
+            path = item.get("path", "")
+            if path.startswith("MODs/") and path.endswith(".jar") and item.get("type") == "blob":
+                parts = path.split("/")
+                filename = parts[-1]
+                category = "/".join(parts[1:-1]) if len(parts) > 2 else "root"
+                encoded_path = "/".join(quote(p) for p in parts)
+                download_url = f"{GITHUB_RAW_BASE}/{encoded_path}"
+                mods.append(ModInfo(
+                    name=filename,
+                    download_url=download_url,
+                    size=item.get("size", 0),
+                    category=category
+                ))
+        return mods
+    except Exception:
+        return None
+
+
+def _get_mods_from_web() -> list[ModInfo] | None:
+    """
+    Получает список модов через веб-интерфейс GitHub (обход ограничения Rate Limit 60 req/h).
+    """
+    mods: list[ModInfo] = []
+    try:
+        _scan_github_web("MODs", mods, "")
+        return mods
+    except Exception:
+        return None
+
+
+def _scan_github_web(path: str, mods: list[ModInfo], category: str) -> None:
+    """Рекурсивно сканирует директорию на GitHub через публичную веб-страницу."""
+    url = f"https://github.com/axol0ttl/shizoteh/tree/main/{path}"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    resp = requests.get(url, headers=headers, timeout=15)
+    resp.raise_for_status()
+
+    matches = re.findall(r'data-target="react-app\.embeddedData"[^>]*>(.*?)</script>', resp.text, re.DOTALL)
+    if not matches:
+        return
+
+    data = json.loads(matches[0])
+    items = data.get("payload", {}).get("codeViewTreeRoute", {}).get("tree", {}).get("items", [])
+
+    for item in items:
+        item_path = item.get("path", "")
+        item_name = item.get("name", "")
+        content_type = item.get("contentType")
+
+        if content_type == "directory":
+            sub_category = item_name if not category else f"{category}/{item_name}"
+            _scan_github_web(item_path, mods, sub_category)
+        elif content_type == "file" and item_name.endswith(".jar"):
+            parts = item_path.split("/")
+            encoded_path = "/".join(quote(p) for p in parts)
+            download_url = f"{GITHUB_RAW_BASE}/{encoded_path}"
+            mods.append(ModInfo(
+                name=item_name,
+                download_url=download_url,
+                size=item.get("size", 0),
+                category=category or "root"
+            ))
 
 
 def _scan_github_dir(path: str, mods: list[ModInfo], category: str) -> None:
