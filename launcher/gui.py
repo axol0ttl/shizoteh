@@ -499,7 +499,19 @@ class ShizotehLauncher(ctk.CTk):
                 status_callback=self._set_status,
             )
 
-            self._set_status(f"✅ Minecraft запущен! (PID: {process.pid})")
+            import time
+            time.sleep(1.5)
+            exit_code = process.poll()
+            if exit_code is not None:
+                # communicate() дочитывает stderr и забирает завершившийся процесс,
+                # чтобы он не оставался зомби в системе.
+                _, stderr = process.communicate(timeout=5)
+                stderr_data = stderr.decode("utf-8", errors="replace").strip() if stderr else ""
+                err_msg = stderr_data if stderr_data else f"Процесс завершился с кодом {exit_code}"
+                self._set_status(f"❌ Ошибка запуска (код {exit_code})")
+                messagebox.showerror("ШИЗОТЕХ — Ошибка запуска", f"Minecraft завершился сразу после запуска (код {exit_code}):\n\n{err_msg[:1000]}")
+            else:
+                self._set_status(f"✅ Minecraft запущен! (PID: {process.pid})")
 
         except Exception as e:
             self._set_status(f"❌ Ошибка: {e}")

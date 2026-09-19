@@ -557,12 +557,42 @@ def _build_classpath(game_dir: str, mc_version_json: dict, fabric_json: dict, mc
     return sep.join(paths)
 
 
-def _substitute_args(args_template: list, replacements: dict) -> list[str]:
-    """Подставляет значения переменных в аргументы запуска."""
+def _rule_matches(rule: dict, features: dict[str, bool]) -> bool:
+    """Проверяет, подходит ли одно правило запуска текущему окружению."""
+    rule_os = rule.get("os", {})
+    if rule_os:
+        if rule_os.get("name") and rule_os["name"] != get_os_name():
+            return False
+        if rule_os.get("arch") and rule_os["arch"] != get_arch():
+            return False
+
+    rule_features = rule.get("features", {})
+    return all(features.get(name, False) == expected for name, expected in rule_features.items())
+
+
+def _rules_allow(rules: list[dict], features: dict[str, bool]) -> bool:
+    """Применяет правила Mojang в их порядке и возвращает итоговое действие."""
+    allowed = False
+    for rule in rules:
+        if _rule_matches(rule, features):
+            allowed = rule.get("action", "allow") == "allow"
+    return allowed
+
+
+def _substitute_args(
+    args_template: list,
+    replacements: dict,
+    features: dict[str, bool] | None = None,
+) -> list[str]:
+    """Фильтрует правила и подставляет значения переменных в аргументы запуска."""
+    features = features or {}
     result = []
     for arg in args_template:
         if isinstance(arg, dict):
-            # Сложный аргумент с правилами — упрощаем
+            rules = arg.get("rules")
+            if rules and not _rules_allow(rules, features):
+                continue
+
             value = arg.get("value")
             if value:
                 if isinstance(value, list):
@@ -651,10 +681,15 @@ def launch_minecraft(
         "${launcher_version}": "1.0",
         "${classpath}": classpath,
         "${path}": natives_dir,
+        "${quickPlayMultiplayer}": f"{server_host}:{server_port}",
     }
 
     # Собираем команду
     cmd = [java_path]
+
+    # На macOS (Darwin) для LWJGL3 / GLFW обязателен аргумент -XstartOnFirstThread
+    if platform.system() == "Darwin":
+        cmd.append("-XstartOnFirstThread")
 
     # JVM-аргументы
     cmd.append(f"-Xms{min_ram_mb}M")
@@ -681,8 +716,26 @@ def launch_minecraft(
 
     # Игровые аргументы
     game_args_template = arguments.get("game", [])
+    supports_quick_play = any(
+        isinstance(arg, dict)
+        and any(
+            isinstance(value, str) and "quickPlayMultiplayer" in value
+            for value in (
+            arg.get("value", []) if isinstance(arg.get("value"), list)
+            else [arg.get("value", "")]
+            )
+        )
+        for arg in game_args_template
+    )
     if game_args_template:
-        game_args = _substitute_args(game_args_template, replacements)
+        game_args = _substitute_args(
+            game_args_template,
+            replacements,
+            features={
+                "has_quick_plays_support": False,
+                "is_quick_play_multiplayer": True,
+            },
+        )
         cmd.extend(game_args)
     else:
         # Старый формат (minecraftArguments)
@@ -693,18 +746,23 @@ def launch_minecraft(
                     arg = arg.replace(key, str(val))
                 cmd.append(arg)
 
-    # Прямое подключение к серверу (в обход меню)
-    cmd.extend(["--server", server_host])
-    cmd.extend(["--port", str(server_port)])
+    # В новых версиях используется единственный quick-play аргумент.
+    # Старые версии запускаются через устаревшие --server/--port.
+    if not supports_quick_play:
+        cmd.extend(["--server", server_host])
+        cmd.extend(["--port", str(server_port)])
 
     if status_callback:
         status_callback(f"Запуск Minecraft... ({username} → {server_host}:{server_port})")
 
-    # Запускаем процесс
+    # Запускаем процесс.
+    # stdout НЕ перехватываем (DEVNULL), иначе буфер трубы переполняется
+    # от обилия логов Minecraft и процесс подвисает / становится зомби.
+    # stderr перехватываем в PIPE, чтобы поймать ошибки запуска.
     process = subprocess.Popen(
         cmd,
         cwd=game_dir,
-        stdout=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE
     )
 
