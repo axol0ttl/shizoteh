@@ -24,15 +24,13 @@ jobs:
             platform: windows-x64
             artifact: shizoteh-windows-x64.exe
 
-          # macOS Intel (последний intel-раннер — macos-13)
-          - os: macos-13
-            platform: macos-intel
-            artifact: shizoteh-macos-intel
-
-          # macOS Apple Silicon (M-серия)
+          # macOS Universal (Intel + Apple Silicon в одном fat-бинарнике)
+          # Собирается на ARM-раннере macos-latest через --target-arch universal2.
+          # Устраняет зависимость от дефицитных intel-раннеров macos-13.
           - os: macos-latest
-            platform: macos-arm64
-            artifact: shizoteh-macos-arm64
+            platform: macos-universal
+            artifact: shizoteh-macos-universal
+            pyinstaller_arch: universal2
 
           # Linux x64
           - os: ubuntu-latest
@@ -76,8 +74,22 @@ jobs:
             --name ${{ matrix.platform }} `
             main.py
 
-      - name: 🔨 Сборка (macOS / Linux)
-        if: runner.os != 'Windows'
+      # macOS: собираем universal2 fat-бинарник (Intel + ARM в одном файле)
+      - name: 🔨 Сборка (macOS universal2)
+        if: runner.os == 'macOS'
+        working-directory: launcher
+        run: |
+          pyinstaller \
+            --onefile \
+            --windowed \
+            --target-arch universal2 \
+            --collect-all customtkinter \
+            --collect-all PIL \
+            --name ${{ matrix.platform }} \
+            main.py
+
+      - name: 🔨 Сборка (Linux)
+        if: runner.os == 'Linux'
         working-directory: launcher
         run: |
           pyinstaller \
@@ -159,8 +171,7 @@ jobs:
             | Платформа | Файл |
             |-----------|------|
             | 🪟 Windows x64 | `shizoteh-windows-x64.exe` |
-            | 🍎 macOS Intel (x86_64) | `shizoteh-macos-intel` |
-            | 🍎 macOS Apple Silicon (M1/M2/M3/M4/M5) | `shizoteh-macos-arm64` |
+            | 🍎 macOS (Intel + Apple Silicon) | `shizoteh-macos-universal` |
             | 🐧 Linux x64 | `shizoteh-linux-x64` |
 
             > **macOS:** перед первым запуском в терминале:
