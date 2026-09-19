@@ -419,6 +419,15 @@ class ShizotehLauncher(ctk.CTk):
         self.progress_bar.set(0)
 
         try:
+            # Загружаем актуальный конфиг с сервера
+            self._set_status("🔄 Проверка конфигурации сервера...")
+            try:
+                self.remote_config = load_remote_config()
+            except Exception as e:
+                # Если офлайн, но конфиг уже был загружен ранее при старте — используем его
+                if not self.remote_config:
+                    raise e
+
             game_dir = self.client_config["game_dir"]
             mc_version = self.remote_config["minecraft_version"]
             loader_version = self.remote_config["fabric_loader_version"]

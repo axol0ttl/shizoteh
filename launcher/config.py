@@ -67,8 +67,12 @@ def load_remote_config() -> dict:
     Загружает серверный конфиг с GitHub.
     Возвращает словарь с полями: minecraft_version, fabric_loader_version, server_ip.
     """
+    import time
     try:
-        resp = requests.get(REMOTE_CONFIG_URL, timeout=10)
+        # Добавляем timestamp и no-cache заголовки для обхода Fastly/GitHub CDN кеша (max-age=300)
+        params = {"t": int(time.time())}
+        headers = {"Cache-Control": "no-cache", "Pragma": "no-cache"}
+        resp = requests.get(REMOTE_CONFIG_URL, params=params, headers=headers, timeout=10)
         resp.raise_for_status()
         config = resp.json()
         return config
