@@ -1,0 +1,170 @@
+name: 🔨 Сборка лаунчера
+
+on:
+  push:
+    branches:
+      - main
+
+# Разрешаем создавать/обновлять релизы
+permissions:
+  contents: write
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # Сборка под каждую платформу параллельно
+  # ─────────────────────────────────────────────────────────────
+  build:
+    name: Сборка · ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows x64
+          - os: windows-latest
+            platform: windows-x64
+            artifact: shizoteh-windows-x64.exe
+
+          # macOS Intel (последний intel-раннер — macos-13)
+          - os: macos-13
+            platform: macos-intel
+            artifact: shizoteh-macos-intel
+
+          # macOS Apple Silicon (M-серия)
+          - os: macos-latest
+            platform: macos-arm64
+            artifact: shizoteh-macos-arm64
+
+          # Linux x64
+          - os: ubuntu-latest
+            platform: linux-x64
+            artifact: shizoteh-linux-x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: 📥 Клонирование репозитория
+        uses: actions/checkout@v4
+
+      - name: 🐍 Установка Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Tkinter не входит в стандартный Python на Ubuntu
+      - name: 📦 Системные зависимости (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-tk
+
+      - name: 📦 Установка Python-зависимостей
+        working-directory: launcher
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: 🔨 Сборка (Windows)
+        if: runner.os == 'Windows'
+        working-directory: launcher
+        shell: pwsh
+        run: |
+          pyinstaller `
+            --onefile `
+            --noconsole `
+            --collect-all customtkinter `
+            --collect-all PIL `
+            --name ${{ matrix.platform }} `
+            main.py
+
+      - name: 🔨 Сборка (macOS / Linux)
+        if: runner.os != 'Windows'
+        working-directory: launcher
+        run: |
+          pyinstaller \
+            --onefile \
+            --windowed \
+            --collect-all customtkinter \
+            --collect-all PIL \
+            --name ${{ matrix.platform }} \
+            main.py
+
+      # Переименовываем в финальное имя артефакта
+      - name: 🏷️ Переименование бинарника (Windows)
+        if: runner.os == 'Windows'
+        working-directory: launcher/dist
+        shell: pwsh
+        run: Rename-Item "${{ matrix.platform }}.exe" "${{ matrix.artifact }}"
+
+      - name: 🏷️ Переименование бинарника (macOS / Linux)
+        if: runner.os != 'Windows'
+        working-directory: launcher/dist
+        run: |
+          mv "${{ matrix.platform }}" "${{ matrix.artifact }}"
+          chmod +x "${{ matrix.artifact }}"
+
+      - name: ⬆️ Загрузка артефакта
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}
+          path: launcher/dist/${{ matrix.artifact }}
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────────────────────
+  # Публикация rolling-релиза «latest» после сборки всех платформ
+  # ─────────────────────────────────────────────────────────────
+  release:
+    name: 🚀 Публикация релиза
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Клонирование (нужен для git-команд)
+        uses: actions/checkout@v4
+
+      - name: ⬇️ Скачивание всех артефактов
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: 📋 Список файлов
+        run: ls -lh dist/
+
+      # Принудительно перемещаем тег latest на текущий коммит
+      - name: 🔖 Обновление тега latest
+        run: |
+          git tag -f latest
+          git push origin -f latest
+
+      # Создаём или перезаписываем rolling-релиз
+      - name: 📦 Публикация в GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "⛏ Последняя сборка"
+          prerelease: true
+          make_latest: true
+          files: dist/*
+          body: |
+            ## ⛏ ШИЗОТЕХ Лаунчер — автосборка
+
+            **Коммит:** [`${{ github.sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+            **Ветка:** `${{ github.ref_name }}`
+            **Дата:** ${{ github.event.head_commit.timestamp }}
+            **Сообщение:** ${{ github.event.head_commit.message }}
+
+            ---
+
+            ### 📥 Скачать:
+            | Платформа | Файл |
+            |-----------|------|
+            | 🪟 Windows x64 | `shizoteh-windows-x64.exe` |
+            | 🍎 macOS Intel (x86_64) | `shizoteh-macos-intel` |
+            | 🍎 macOS Apple Silicon (M1/M2/M3/M4/M5) | `shizoteh-macos-arm64` |
+            | 🐧 Linux x64 | `shizoteh-linux-x64` |
+
+            > **macOS:** перед первым запуском в терминале:
+            > `xattr -d com.apple.quarantine shizoteh-macos-*`
+            >
+            > **Linux:** сделай файл исполняемым:
+            > `chmod +x shizoteh-linux-x64`
