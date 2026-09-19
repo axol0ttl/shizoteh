@@ -12,11 +12,14 @@ minecraft.py — Скачивание и запуск Minecraft с Fabric Loader
 import hashlib
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import platform
+import socket
 import subprocess
 import time
 import uuid
 from typing import Callable
+from urllib.parse import urlparse
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -24,7 +27,7 @@ from urllib3.util.retry import Retry
 
 # Mojang API URLs
 VERSION_MANIFEST_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
-ASSETS_BASE_URL = "https://resources.download.minecraft.com"
+ASSETS_BASE_URL = "https://resources.download.minecraft.net"
 
 # Fabric Meta API
 FABRIC_META_URL = "https://meta.fabricmc.net/v2/versions/loader/{mc_version}/{loader_version}/profile/json"
@@ -33,9 +36,114 @@ FABRIC_META_URL = "https://meta.fabricmc.net/v2/versions/loader/{mc_version}/{lo
 MAX_RETRIES = 5
 RETRY_BACKOFF = 1.5  # секунды (экспоненциально: 1.5, 3, 6, 12, 24)
 
+# Fallback DNS серверы (если системный DNS не работает)
+FALLBACK_DNS = ["8.8.8.8", "1.1.1.1"]
+
+# Кеш DNS-резолвинга
+_dns_cache: dict[str, str] = {}
+
+
+def _resolve_host(hostname: str) -> str:
+    """
+    Резолвит hostname в IP-адрес. Сначала пробует системный DNS,
+    при неудаче — fallback через Google/Cloudflare DNS (UDP запрос).
+    """
+    if hostname in _dns_cache:
+        return _dns_cache[hostname]
+
+    # Пробуем системный DNS
+    try:
+        ip = socket.gethostbyname(hostname)
+        _dns_cache[hostname] = ip
+        return ip
+    except socket.gaierror:
+        pass
+
+    # Fallback: ручной DNS-запрос через UDP к 8.8.8.8 / 1.1.1.1
+    import struct as _struct
+    import random
+
+    def _build_dns_query(domain: str) -> bytes:
+        """Строит простой DNS A-запрос."""
+        txn_id = random.randint(0, 65535)
+        header = _struct.pack(">HHHHHH", txn_id, 0x0100, 1, 0, 0, 0)
+        question = b""
+        for part in domain.split("."):
+            question += bytes([len(part)]) + part.encode()
+        question += b"\x00"  # Конец имени
+        question += _struct.pack(">HH", 1, 1)  # Type A, Class IN
+        return header + question
+
+    def _parse_dns_response(data: bytes) -> str | None:
+        """Извлекает IP из DNS-ответа."""
+        # Пропускаем header (12 байт) и question section
+        pos = 12
+        # Пропускаем question name
+        while pos < len(data) and data[pos] != 0:
+            pos += data[pos] + 1
+        pos += 5  # null byte + QTYPE(2) + QCLASS(2)
+        # Парсим answer records
+        while pos < len(data) - 12:
+            # Name (может быть pointer)
+            if data[pos] & 0xC0 == 0xC0:
+                pos += 2
+            else:
+                while pos < len(data) and data[pos] != 0:
+                    pos += data[pos] + 1
+                pos += 1
+            if pos + 10 > len(data):
+                break
+            rtype, rclass, _ttl, rdlength = _struct.unpack_from(">HHIH", data, pos)
+            pos += 10
+            if rtype == 1 and rclass == 1 and rdlength == 4:  # A record
+                ip = ".".join(str(b) for b in data[pos:pos+4])
+                return ip
+            pos += rdlength
+        return None
+
+    query = _build_dns_query(hostname)
+    for dns_server in FALLBACK_DNS:
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.settimeout(3)
+            sock.sendto(query, (dns_server, 53))
+            response, _ = sock.recvfrom(1024)
+            sock.close()
+            ip = _parse_dns_response(response)
+            if ip:
+                _dns_cache[hostname] = ip
+                return ip
+        except (socket.timeout, OSError):
+            continue
+
+    raise ConnectionError(f"Не удалось разрешить DNS для {hostname} ни через системный DNS, ни через fallback")
+
+
+class FallbackDNSAdapter(HTTPAdapter):
+    """HTTPAdapter, который подменяет hostname на IP при проблемах с DNS."""
+
+    def send(self, request, **kwargs):
+        """Перехватывает запрос: если DNS не работает, подставляет IP."""
+        parsed = urlparse(request.url)
+        hostname = parsed.hostname
+
+        try:
+            # Проверяем, работает ли системный DNS
+            socket.gethostbyname(hostname)
+        except socket.gaierror:
+            # Системный DNS не работает — резолвим сами
+            ip = _resolve_host(hostname)
+            # Подменяем hostname на IP в URL
+            new_url = request.url.replace(f"://{hostname}", f"://{ip}", 1)
+            request.url = new_url
+            # Добавляем Host header для корректного TLS/SNI
+            request.headers["Host"] = hostname
+
+        return super().send(request, **kwargs)
+
 
 def _create_session() -> requests.Session:
-    """Создаёт requests.Session с автоматическим retry на сетевые ошибки."""
+    """Создаёт requests.Session с retry и fallback DNS."""
     session = requests.Session()
     retry_strategy = Retry(
         total=MAX_RETRIES,
@@ -44,13 +152,13 @@ def _create_session() -> requests.Session:
         allowed_methods=["GET"],
         raise_on_status=False,
     )
-    adapter = HTTPAdapter(max_retries=retry_strategy, pool_maxsize=10)
+    adapter = FallbackDNSAdapter(max_retries=retry_strategy, pool_maxsize=10)
     session.mount("https://", adapter)
     session.mount("http://", adapter)
     return session
 
 
-# Глобальная сессия с retry
+# Глобальная сессия с retry и fallback DNS
 _session = _create_session()
 
 
@@ -329,19 +437,27 @@ def download_minecraft(
     objects = asset_index.get("objects", {})
     total_assets = len(objects)
 
-    for idx, (asset_name, asset_info) in enumerate(objects.items()):
+    def _download_asset_task(asset_name, asset_info):
         sha1 = asset_info["hash"]
         prefix = sha1[:2]
         asset_path = os.path.join(objects_dir, prefix, sha1)
-
-        if idx % 100 == 0 and status_callback:
-            status_callback(f"Ассеты ({idx}/{total_assets})...")
-
         _download_file(
             url=f"{ASSETS_BASE_URL}/{prefix}/{sha1}",
             path=asset_path,
             expected_sha1=sha1
         )
+
+    with ThreadPoolExecutor(max_workers=30) as executor:
+        futures = []
+        for asset_name, asset_info in objects.items():
+            futures.append(executor.submit(_download_asset_task, asset_name, asset_info))
+            
+        completed = 0
+        for future in as_completed(futures):
+            future.result()  # Если была ошибка скачивания, она выбросится здесь
+            completed += 1
+            if completed % 100 == 0 and status_callback:
+                status_callback(f"Ассеты ({completed}/{total_assets})...")
 
     if status_callback:
         status_callback("Minecraft загружен!")

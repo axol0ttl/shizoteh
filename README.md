@@ -7,4 +7,4 @@
    ---
 >[!WARNING]
 >- Проект никак не ассоциирован и(или) не связан с Mojang/Microsoft.
->-  This project doesn't affliated or supported by Mojang/Microsoft.
+>-  NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG.
