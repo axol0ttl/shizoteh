@@ -1,0 +1,8 @@
+launcher/venv/
+launcher/__pycache__/
+launcher/*.pyc
+launcher/client_config.json
+*.spec
+launcher/build/
+launcher/dist/
+launcher/launcher.spec
