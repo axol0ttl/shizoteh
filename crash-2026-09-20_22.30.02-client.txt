@@ -1,0 +1,278 @@
+---- Minecraft Crash Report ----
+// You're mean.
+
+Time: 2026-09-20 22:30:02
+Description: Unexpected error
+
+java.lang.NullPointerException: Cannot invoke "net.minecraft.client.player.LocalPlayer.getInventory()" because "this.minecraft.player" is null
+	at knot//net.minecraft.client.multiplayer.MultiPlayerGameMode.ensureHasSentCarriedItem(MultiPlayerGameMode.java:310)
+	at knot//net.minecraft.client.multiplayer.MultiPlayerGameMode.tick(MultiPlayerGameMode.java:293)
+	at knot//net.minecraft.client.Minecraft.tick(Minecraft.java:1924)
+	at knot//net.minecraft.client.Minecraft.runTick(Minecraft.java:1360)
+	at knot//net.minecraft.client.Minecraft.run(Minecraft.java:991)
+	at knot//net.minecraft.client.main.Main.main(Main.java:248)
+	at net.fabricmc.loader.impl.game.minecraft.MinecraftGameProvider.launch(MinecraftGameProvider.java:517)
+	at net.fabricmc.loader.impl.launch.knot.Knot.launch(Knot.java:72)
+	at net.fabricmc.loader.impl.launch.knot.KnotClient.main(KnotClient.java:23)
+
+
+A detailed walkthrough of the error, its code path and all known details is as follows:
+---------------------------------------------------------------------------------------
+
+-- Head --
+Thread: Render thread
+Stacktrace:
+	at knot//net.minecraft.client.multiplayer.MultiPlayerGameMode.ensureHasSentCarriedItem(MultiPlayerGameMode.java:310)
+	at knot//net.minecraft.client.multiplayer.MultiPlayerGameMode.tick(MultiPlayerGameMode.java:293)
+
+-- Uptime --
+Details:
+	JVM uptime: 17.706s
+	Wall uptime: 13.331s
+	High-res time: 12.425s
+	Client ticks: 210 ticks / 10.500s
+Stacktrace:
+	at knot//net.minecraft.client.Minecraft.fillReport(Minecraft.java:2529)
+	at knot//net.minecraft.client.Minecraft.emergencySaveAndCrash(Minecraft.java:1047)
+	at knot//net.minecraft.client.Minecraft.run(Minecraft.java:1015)
+	at knot//net.minecraft.client.main.Main.main(Main.java:248)
+	at net.fabricmc.loader.impl.game.minecraft.MinecraftGameProvider.launch(MinecraftGameProvider.java:517)
+	at net.fabricmc.loader.impl.launch.knot.Knot.launch(Knot.java:72)
+	at net.fabricmc.loader.impl.launch.knot.KnotClient.main(KnotClient.java:23)
+
+-- Affected level --
+Details:
+	All players: 0 total; 
+	Chunk stats: 729, 0
+	Level dimension: minecraft:overworld
+	Level time: 0 game time, 0 day time
+	Level spawn location: World: (8,64,8), Section: (at 8,0,8 in 0,4,0; chunk contains blocks 0,-64,0 to 15,319,15), Region: (0,0; contains chunks 0,0 to 31,31, blocks 0,-64,0 to 511,319,511)
+	Server brand: ~~ERROR~~ NullPointerException: Cannot read field "connection" because "this.minecraft.player" is null
+	Server type: Integrated singleplayer server
+	Tracked entity count: 0
+	Client weather: Raining: false, thundering: false
+
+-- Last reload --
+Details:
+	Reload number: 1
+	Reload reason: initial
+	Finished: Yes
+	Packs: vanilla, appleskin, baguettelib, betterblockentities, bobby, c2me, capes, chat_heads, chatanimation, cloth-config, continuity, emlib, emotecraft, entityculling, explosiveenhancement, fabric-api, fabric-api-base, fabric-api-lookup-api-v1, fabric-biome-api-v1, fabric-block-api-v1, fabric-block-getter-api-v2, fabric-command-api-v2, fabric-content-registries-v0, fabric-convention-tags-v2, fabric-crash-report-info-v1, fabric-creative-tab-api-v1, fabric-data-attachment-api-v1, fabric-data-generation-api-v1, fabric-debug-api-v1, fabric-dimensions-v1, fabric-entity-events-v1, fabric-events-interaction-v0, fabric-game-rule-api-v1, fabric-item-api-v1, fabric-key-mapping-api-v1, fabric-language-kotlin, fabric-lifecycle-events-v1, fabric-loot-api-v3, fabric-menu-api-v1, fabric-message-api-v1, fabric-model-loading-api-v1, fabric-networking-api-v1, fabric-object-builder-api-v1, fabric-particles-v1, fabric-permission-api-v1, fabric-recipe-api-v1, fabric-registry-sync-v0, fabric-renderer-api-v1, fabric-renderer-indigo, fabric-rendering-fluids-v1, fabric-rendering-v1, fabric-resource-conditions-api-v1, fabric-resource-loader-v0, fabric-resource-loader-v1, fabric-screen-api-v1, fabric-serialization-api-v1, fabric-sound-api-v1, fabric-tag-api-v1, fabric-transfer-api-v1, fabric-transitive-access-wideners-v1, fabricloader, forgeconfigapiport, immediatelyfast, iris, jankson, libgui, lightweight-inventory-sorting, lithium, modmenu, morechathistory, notenoughanimations, particlerain, particular, placeholder-api, plasmovoice, player_animation_library, reeses-sodium-options, rrls, shine, shulkerboxtooltip, smoothscroll, sodium, sodium-extra, sound_physics_remastered, stendhal, trender, vmp
+
+-- System Details --
+Details:
+	Minecraft Version: 26.1.2
+	Minecraft Version ID: 26.1.2
+	Operating System: Mac OS X (aarch64) version 27.0
+	Java Version: 25.0.3, Eclipse Adoptium
+	Java VM Version: OpenJDK 64-Bit Server VM (mixed mode, sharing), Eclipse Adoptium
+	Memory: 7214953816 bytes (6880 MiB) / 8589934592 bytes (8192 MiB) up to 10737418240 bytes (10240 MiB)
+	Memory (heap): init: 8192MiB, used: 1275MiB, committed: 8192MiB, max: 10240MiB
+	Memory (non-head): init: 007MiB, used: 251MiB, committed: 255MiB, max: 000MiB
+	CPUs: 10
+	Processor Vendor: Apple Inc.
+	Processor Name: Apple M5
+	Identifier: Apple Inc. Family 0x1b588bb3 Model 0 Stepping 0
+	Microarchitecture: ARM64 SoC: Firestorm + Icestorm
+	Frequency (GHz): 0.00
+	Number of physical packages: 1
+	Number of physical CPUs: 10
+	Number of logical CPUs: 10
+	Graphics card #0 name: Apple M5
+	Graphics card #0 vendor: Apple (0x106b)
+	Graphics card #0 VRAM (MiB): 0.00
+	Graphics card #0 deviceId: unknown
+	Graphics card #0 versionInfo: unknown
+	Memory slot #0 capacity (MiB): 0.00
+	Memory slot #0 clockSpeed (GHz): 0.00
+	Memory slot #0 type: unknown
+	Virtual memory max (MiB): 18432.00
+	Virtual memory used (MiB): 12085.13
+	Swap memory total (MiB): 2048.00
+	Swap memory used (MiB): 748.44
+	Space in storage for jna.tmpdir (MiB): available: 77643.28, total: 471432.09
+	Space in storage for org.lwjgl.system.SharedLibraryExtractPath (MiB): available: 77643.28, total: 471432.09
+	Space in storage for io.netty.native.workdir (MiB): available: 77643.28, total: 471432.09
+	Space in storage for java.io.tmpdir (MiB): available: 77643.28, total: 471432.09
+	Space in storage for workdir (MiB): available: 77643.28, total: 471432.09
+	JVM Flags: 8 total; -Xms8192M -Xmx10240M -XX:+UseG1GC -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M
+	Debug Flags: 0 total; 
+	Fabric Mods: 
+		appleskin: AppleSkin 3.0.10+mc26.1.2
+		baguettelib: BaguetteLib 2.0.7
+		betterblockentities: BBE 1.3.6+mc26.1.2
+		bobby: Bobby 5.2.13+mc26.1
+			com_typesafe_config: config 1.4.2
+			fabric-api-base: Fabric API Base 2.0.3+ece0632347
+			fabric-command-api-v2: Fabric Command API (v2) 3.0.5+e2bdee7847
+			io_leangen_geantyref_geantyref: geantyref 1.3.13
+			org_spongepowered_configurate-core: configurate-core 4.1.2
+			org_spongepowered_configurate-hocon: configurate-hocon 4.1.2
+		c2me: Concurrent Chunk Management Engine 0.3.7+alpha.0.61+26.1
+			c2me-base: Concurrent Chunk Management Engine (Base) 0.3.7+alpha.0.61+26.1
+			c2me-client-uncapvd: Concurrent Chunk Management Engine (Client/Uncap View Distance) 0.3.7+alpha.0.61+26.1
+			c2me-fixes-chunkio-threading-issues: Concurrent Chunk Management Engine (Fixes/Chunk IO/Threading Issues) 0.3.7+alpha.0.61+26.1
+			c2me-fixes-general-threading-issues: Concurrent Chunk Management Engine (Fixes/General/Threading Issues) 0.3.7+alpha.0.61+26.1
+			c2me-fixes-worldgen-threading-issues: Concurrent Chunk Management Engine (Fixes/WorldGen/Threading Issues) 0.3.7+alpha.0.61+26.1
+			c2me-fixes-worldgen-vanilla-bugs: Concurrent Chunk Management Engine (Fixes/WorldGen/Vanilla Bugs) 0.3.7+alpha.0.61+26.1
+			c2me-notickvd: Concurrent Chunk Management Engine (No Tick View Distance) 0.3.7+alpha.0.61+26.1
+			c2me-opts-allocs: Concurrent Chunk Management Engine (Optimizations/Memory Allocations) 0.3.7+alpha.0.61+26.1
+			c2me-opts-chunkio: Concurrent Chunk Management Engine (Optimizations/Chunk IO) 0.3.7+alpha.0.61+26.1
+			c2me-opts-dfc: Concurrent Chunk Management Engine (Optimizations/Density Function Compiler) 0.3.7+alpha.0.61+26.1
+			c2me-opts-math: Concurrent Chunk Management Engine (Optimizations/Math) 0.3.7+alpha.0.61+26.1
+			c2me-opts-natives-math: Concurrent Chunk Management Engine (Optimizations/Natives Math) 0.3.7+alpha.0.61+26.1
+			c2me-opts-scheduling: Concurrent Chunk Management Engine (Optimizations/Scheduling) 0.3.7+alpha.0.61+26.1
+			c2me-opts-worldgen-general: Concurrent Chunk Management Engine (Optimizations/General WorldGen) 0.3.7+alpha.0.61+26.1
+			c2me-opts-worldgen-vanilla: Concurrent Chunk Management Engine (Optimizations/Vanilla WorldGen) 0.3.7+alpha.0.61+26.1
+			c2me-rewrites-chunk-serializer: Concurrent Chunk Management Engine (Rewrites/Chunk Serializer) 0.3.7+alpha.0.61+26.1
+			c2me-rewrites-chunk-system: Concurrent Chunk Management Engine (Rewrites/Chunk System) 0.3.7+alpha.0.61+26.1
+			c2me-rewrites-chunkio: Concurrent Chunk Management Engine (Rewrites/Chunk IO) 0.3.7+alpha.0.61+26.1
+			c2me-server-utils: Concurrent Chunk Management Engine (Server Utils) 0.3.7+alpha.0.61+26.1
+			c2me-threading-lighting: Concurrent Chunk Management Engine (Threading/Lighting) 0.3.7+alpha.0.61+26.1
+			io_reactivex_rxjava3_rxjava: rxjava 3.1.12
+			mixinsquared: MixinSquared 0.3.7-beta.1
+			net_objecthunter_exp4j: exp4j 0.4.8
+			org_jctools_jctools-core: jctools-core 4.0.5
+			org_reactivestreams_reactive-streams: reactive-streams 1.0.4
+		capes: Capes 1.5.11+26.1
+		chat_heads: Chat Heads 1.2.8
+		chatanimation: ChatAnimation 1.3.3
+			emlib: EmLib 1.0.2
+		cloth-config: Cloth Config v26.1 26.1.154
+			cloth-basic-math: cloth-basic-math 0.6.1
+		continuity: Continuity 3.0.1-beta.2+26.1
+		emotecraft: Emotecraft 3.3.0-b.build.164
+			net_raphimc_noteblocklib: NoteBlockLib 3.4.0-20260814.211116-1
+			translationfallbacks: Translation Fallbacks 1.2.0+mc.26.1-snapshot-10
+		entityculling: EntityCulling 1.10.5
+		explosiveenhancement: Explosive Enhancement 1.4.2-26.1.1
+		fabric-api: Fabric API 0.155.3+26.1.2
+			fabric-api-lookup-api-v1: Fabric API Lookup API (v1) 2.0.12+d5a053b64c
+			fabric-biome-api-v1: Fabric Biome API (v1) 18.0.5+2fa62b4e4c
+			fabric-block-api-v1: Fabric Block API (v1) 3.0.2+ec56b6014c
+			fabric-block-getter-api-v2: Fabric BlockGetter API (v2) 2.0.6+ec56b6014c
+			fabric-content-registries-v0: Fabric Content Registries (v0) 11.3.1+af8a297c4c
+			fabric-convention-tags-v2: Fabric Convention Tags (v2) 4.6.2+4f11f7994c
+			fabric-crash-report-info-v1: Fabric Crash Report Info (v1) 1.0.3+9f78a5a84c
+			fabric-creative-tab-api-v1: Fabric Creative Tab API (v1) 5.0.12+a981f2874c
+			fabric-data-attachment-api-v1: Fabric Data Attachment API (v1) 2.2.10+44a0bd1d4c
+			fabric-data-generation-api-v1: Fabric Data Generation API (v1) 24.3.4+cda368334c
+			fabric-debug-api-v1: Fabric Debug API (v1) 1.0.1+c792624d4c
+			fabric-dimensions-v1: Fabric Dimensions API (v1) 5.1.7+ad343a8d4c
+			fabric-entity-events-v1: Fabric Entity Events (v1) 5.0.2+e2bdee784c
+			fabric-events-interaction-v0: Fabric Events Interaction (v0) 5.2.3+07b380be4c
+			fabric-game-rule-api-v1: Fabric Game Rule API (v1) 4.0.5+d871b99e4c
+			fabric-item-api-v1: Fabric Item API (v1) 14.3.0+6d1aaa724c
+			fabric-key-mapping-api-v1: Fabric Key Mapping API (v1) 2.0.4+e2bdee784c
+			fabric-lifecycle-events-v1: Fabric Lifecycle Events (v1) 4.1.1+df84eb3d4c
+			fabric-loot-api-v3: Fabric Loot API (v3) 3.0.12+00a1fba64c
+			fabric-menu-api-v1: Fabric Menu API (v1) 2.0.15+d871b99e4c
+			fabric-message-api-v1: Fabric Message API (v1) 7.0.5+dae8ce3e4c
+			fabric-model-loading-api-v1: Fabric Model Loading API (v1) 8.0.11+c80601bb4c
+			fabric-networking-api-v1: Fabric Networking API (v1) 6.3.2+a217cccf4c
+			fabric-object-builder-api-v1: Fabric Object Builder API (v1) 23.1.1+abb459f14c
+			fabric-particles-v1: Fabric Particles (v1) 5.0.16+b61fef434c
+			fabric-permission-api-v1: Fabric Permission API (v1) 1.0.3+5730ecca4c
+			fabric-recipe-api-v1: Fabric Recipe API (v1) 9.0.17+be4b75ae4c
+			fabric-registry-sync-v0: Fabric Registry Sync (v0) 7.1.1+2fa62b4e4c
+			fabric-renderer-api-v1: Fabric Renderer API (v1) 13.0.8+c80601bb4c
+			fabric-renderer-indigo: Fabric Renderer - Indigo 8.1.5+1403e82c4c
+			fabric-rendering-fluids-v1: Fabric Rendering Fluids (v1) 6.0.1+d871b99e4c
+			fabric-rendering-v1: Fabric Rendering (v1) 23.3.1+e9207d814c
+			fabric-resource-conditions-api-v1: Fabric Resource Conditions API (v1) 6.1.0+83dd0ba34c
+			fabric-resource-loader-v0: Fabric Resource Loader (v0) 3.3.17+4fc5413f4c
+			fabric-resource-loader-v1: Fabric Resource Loader (v1) 2.0.10+7c44c7324c
+			fabric-screen-api-v1: Fabric Screen API (v1) 5.1.0+981dd9b24c
+			fabric-serialization-api-v1: Fabric Serialization API (v1) 2.0.3+11a26f314c
+			fabric-sound-api-v1: Fabric Sound API (v1) 2.0.4+11a26f314c
+			fabric-tag-api-v1: Fabric Tag API (v1) 2.1.1+371cf5db4c
+			fabric-transfer-api-v1: Fabric Transfer API (v1) 8.0.6+357ea7334c
+			fabric-transitive-access-wideners-v1: Fabric Transitive Access Wideners (v1) 8.1.3+3ff549fb4c
+		fabric-language-kotlin: Fabric Language Kotlin 1.14.1+kotlin.2.4.20
+			org_jetbrains_kotlin_kotlin-reflect: kotlin-reflect 2.4.20
+			org_jetbrains_kotlin_kotlin-stdlib: kotlin-stdlib 2.4.20
+			org_jetbrains_kotlin_kotlin-stdlib-jdk7: kotlin-stdlib-jdk7 2.4.20
+			org_jetbrains_kotlin_kotlin-stdlib-jdk8: kotlin-stdlib-jdk8 2.4.20
+			org_jetbrains_kotlinx_atomicfu-jvm: atomicfu-jvm 0.33.0
+			org_jetbrains_kotlinx_kotlinx-coroutines-core-jvm: kotlinx-coroutines-core-jvm 1.11.0
+			org_jetbrains_kotlinx_kotlinx-coroutines-jdk8: kotlinx-coroutines-jdk8 1.11.0
+			org_jetbrains_kotlinx_kotlinx-datetime-jvm: kotlinx-datetime-jvm 0.8.0
+			org_jetbrains_kotlinx_kotlinx-io-bytestring-jvm: kotlinx-io-bytestring-jvm 0.9.1
+			org_jetbrains_kotlinx_kotlinx-io-core-jvm: kotlinx-io-core-jvm 0.9.1
+			org_jetbrains_kotlinx_kotlinx-serialization-cbor-jvm: kotlinx-serialization-cbor-jvm 1.11.0
+			org_jetbrains_kotlinx_kotlinx-serialization-core-jvm: kotlinx-serialization-core-jvm 1.11.0
+			org_jetbrains_kotlinx_kotlinx-serialization-json-jvm: kotlinx-serialization-json-jvm 1.11.0
+		fabricloader: Fabric Loader 0.19.5
+			mixinextras: MixinExtras 0.5.5
+		ferritecore: FerriteCore 9.0.0
+		forgeconfigapiport: Forge Config API Port 26.1.5
+			com_electronwill_night-config_core: core 3.8.3
+			com_electronwill_night-config_toml: toml 3.8.3
+		immediatelyfast: ImmediatelyFast 1.15.3+26.1
+			net_lenni0451_reflect: Reflect 1.6.2
+		iris: Iris 1.11.4+mc26.1.2
+			io_github_douira_glsl-transformer: glsl-transformer 3.0.0-pre3
+			org_anarres_jcpp: jcpp 1.4.14
+			org_antlr_antlr4-runtime: antlr4-runtime 4.13.1
+		java: OpenJDK 64-Bit Server VM 25
+		lightweight-inventory-sorting: Lightweight Inventory Sorting 1.1.7+26.1
+		lithium: Lithium 0.24.7+mc26.1.2
+		minecraft: Minecraft 26.1.2
+		modmenu: Mod Menu 18.0.1
+			placeholder-api: Placeholder API 3.0.0+26.1
+		morechathistory: More Chat History 2.0.0
+		notenoughanimations: NotEnoughAnimations 1.12.5
+			transition: TRansition 1.0.25
+			trender: TRender 1.0.17
+		particlerain: Particle Rain 4.0.0-beta.10
+		particular: Particular Reforged 1.5.7
+		plasmovoice: Plasmo Voice 2.1.17
+			fabric-permissions-api-v0: fabric-permissions-api 0.7.0
+		player_animation_library: Player Animation Library 1.2.6+mc.26.1
+			com_zigythebird_mochafloats: mochafloats 5.0.0
+			org_redlance_common-utils_services: services 1.2.8
+		reeses-sodium-options: Reese's Sodium Options 2.2.3+mc26.1.2
+		rrls: Remove Reloading Screen 5.2.6+mc.26.1
+		shine: Shine 2.0.0+26.1.x
+		shulkerboxtooltip: Shulker Box Tooltip 5.4.0+26.1.1
+		smoothscroll: Smooth Scrolling 2.8.1
+		sodium: Sodium 0.9.2+mc26.1.2
+		sodium-extra: Sodium Extra 0.8.7+mc26.1.1
+		sound_physics_remastered: Sound Physics Remastered 1.5.1+26.1.2
+		stendhal: Stendhal 1.4.6-26.1.2
+			libgui: LibGui 16.0.1+26.1
+				jankson: Jankson 12.0.0+j1.2.3
+					blue_endless_jankson: jankson 1.2.3
+				libninepatch: LibNinePatch 1.2.0
+		vmp: Very Many Players 0.2.0+beta.7.232+26.1
+			com_ibm_async_asyncutil: asyncutil 0.1.0
+	Loaded Shaderpack: (off)
+	Launched Version: 26.1.2
+	Launcher name: shizoteh
+	Backend library: LWJGL version 3.4.1-snapshot
+	Backend API: Apple M5 GL version 4.1 Metal - 91.7, Apple
+	Window size: 1708x960
+	GFLW Platform: cocoa
+	Render Extensions: GL_EXT_texture_filter_anisotropic
+	GL debug messages: <debugging unavailable>
+	Is Modded: Definitely; Client brand changed to 'fabric'; Server brand changed to 'fabric'
+	Universe: 400921fb54442d18
+	Type: Integrated Server
+	GPU Warnings: version: Metal
+	Transparency: regular
+	Render Distance: 16/16 chunks
+	Resource Packs: vanilla, appleskin (incompatible), baguettelib (incompatible), betterblockentities, bobby, c2me, capes, chat_heads, chatanimation, cloth-config, continuity, emlib, emotecraft, entityculling, explosiveenhancement, fabric-api, fabric-api-base, fabric-api-lookup-api-v1, fabric-biome-api-v1, fabric-block-api-v1, fabric-block-getter-api-v2, fabric-command-api-v2, fabric-content-registries-v0, fabric-convention-tags-v2, fabric-crash-report-info-v1, fabric-creative-tab-api-v1, fabric-data-attachment-api-v1, fabric-data-generation-api-v1, fabric-debug-api-v1, fabric-dimensions-v1, fabric-entity-events-v1, fabric-events-interaction-v0, fabric-game-rule-api-v1, fabric-item-api-v1, fabric-key-mapping-api-v1, fabric-language-kotlin, fabric-lifecycle-events-v1, fabric-loot-api-v3, fabric-menu-api-v1, fabric-message-api-v1, fabric-model-loading-api-v1, fabric-networking-api-v1, fabric-object-builder-api-v1, fabric-particles-v1, fabric-permission-api-v1, fabric-recipe-api-v1, fabric-registry-sync-v0, fabric-renderer-api-v1, fabric-renderer-indigo, fabric-rendering-fluids-v1, fabric-rendering-v1, fabric-resource-conditions-api-v1, fabric-resource-loader-v0, fabric-resource-loader-v1, fabric-screen-api-v1, fabric-serialization-api-v1, fabric-sound-api-v1, fabric-tag-api-v1, fabric-transfer-api-v1, fabric-transitive-access-wideners-v1, fabricloader, forgeconfigapiport (incompatible), immediatelyfast, iris, jankson, libgui, lightweight-inventory-sorting, lithium, modmenu, morechathistory, notenoughanimations, particlerain (incompatible), particular (incompatible), placeholder-api, plasmovoice, player_animation_library, reeses-sodium-options, rrls, shine, shulkerboxtooltip, smoothscroll, sodium, sodium-extra, sound_physics_remastered, stendhal, trender, vmp
+	Sound Cache: 48816 bytes in 1 buffers
+	Current Language: en_us
+	Locale: en_US
+	System encoding: UTF-8
+	File encoding: UTF-8
+	CPU: 10x Apple M5
+	Server Running: false
+	Player Count: 0 / 8; []
+	Active Data Packs: vanilla, fabric-convention-tags-v2, libgui
+	Available Data Packs: fabric-convention-tags-v2, libgui, minecart_improvements, redstone_experiments, trade_rebalance, vanilla
+	Enabled Feature Flags: minecraft:vanilla
+	World Generation: Stable
+	World Seed: 3226124237580208687
+	Suppressed Exceptions: ~~NONE~~
