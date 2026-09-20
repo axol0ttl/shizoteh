@@ -17,6 +17,7 @@ from config import (
     parse_server_address,
     save_client_config,
 )
+from java_installer import JAVA_VERSION, install_java, resolve_java_path
 from minecraft import download_fabric, download_minecraft, launch_minecraft
 from mods import delete_mod, sync_mods
 from server_ping import ServerInfo, ping_server
@@ -434,6 +435,45 @@ class ShizotehLauncher(ctk.CTk):
             server_ip = self.remote_config.get("server_ip", "")
             server_host, server_port = parse_server_address(server_ip)
 
+            # 0. Проверка Java
+            self._set_status("☕ Проверка Java...")
+            configured_java = self.client_config.get("java_path", "java")
+            java_path, java_found = resolve_java_path(game_dir, configured_java)
+
+            if not java_found:
+                # Java не найдена — спрашиваем пользователя из главного потока через after
+                install_event = threading.Event()
+                install_result = [False]  # [True] = пользователь согласился
+
+                def _ask_install():
+                    result = messagebox.askyesno(
+                        "ШИЗОТЕХ — Java не найдена",
+                        f"Java не обнаружена на вашем компьютере.\n\n"
+                        f"Для запуска Minecraft необходима Java.\n"
+                        f"Установить Java {JAVA_VERSION} автоматически?\n\n"
+                        f"Файлы будут загружены в папку игры (≈200 МБ).",
+                    )
+                    install_result[0] = result
+                    install_event.set()
+
+                self.after(0, _ask_install)
+                install_event.wait()  # ждём ответа пользователя
+
+                if not install_result[0]:
+                    self._set_status("❌ Запуск отменён: Java не установлена")
+                    return
+
+                # Устанавливаем Java
+                java_path = install_java(
+                    game_dir=game_dir,
+                    progress_callback=self._set_progress,
+                    status_callback=self._set_status,
+                )
+
+                # Сохраняем путь в клиентский конфиг
+                self.client_config["java_path"] = java_path
+                save_client_config(self.client_config)
+
             # 1. Скачать Minecraft
             self._set_status("📦 Скачивание Minecraft...")
             mc_version_json = download_minecraft(
@@ -492,7 +532,7 @@ class ShizotehLauncher(ctk.CTk):
                 username=self.client_config["username"],
                 server_host=server_host,
                 server_port=server_port,
-                java_path=self.client_config.get("java_path", "java"),
+                java_path=java_path,
                 min_ram_mb=self.client_config.get("min_ram_mb", 2048),
                 max_ram_mb=self.client_config.get("max_ram_mb", 4096),
                 extra_java_args=self.client_config.get("java_args", []),
