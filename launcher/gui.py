@@ -38,6 +38,127 @@ COLORS = {
 }
 
 
+class MinecraftLogWindow(ctk.CTkToplevel):
+    """
+    Всплывающее окно с логами запущенного Minecraft.
+    Читает stdout и stderr процесса в реальном времени.
+    """
+
+    def __init__(self, master, process: "subprocess.Popen"):
+        super().__init__(master)
+        self.title("ШИЗОТЕХ — Логи Minecraft")
+        self.geometry("860x520")
+        self.minsize(600, 360)
+        self.configure(fg_color=COLORS["bg_dark"])
+
+        self._process = process
+        self._running = True
+
+        # --- Заголовок + кнопка очистки ---
+        header = ctk.CTkFrame(self, fg_color=COLORS["bg_card"], corner_radius=0, height=44)
+        header.pack(fill="x")
+        header.pack_propagate(False)
+
+        ctk.CTkLabel(
+            header,
+            text="📋  Логи Minecraft",
+            font=ctk.CTkFont(size=15, weight="bold"),
+            text_color=COLORS["accent"],
+        ).pack(side="left", padx=16, pady=8)
+
+        self._status_dot = ctk.CTkLabel(
+            header,
+            text="● Запущен",
+            font=ctk.CTkFont(size=12),
+            text_color=COLORS["accent_green"],
+        )
+        self._status_dot.pack(side="left", padx=8)
+
+        ctk.CTkButton(
+            header,
+            text="🗑 Очистить",
+            width=90,
+            height=28,
+            fg_color=COLORS["bg_input"],
+            hover_color=COLORS["border"],
+            font=ctk.CTkFont(size=12),
+            command=self._clear,
+        ).pack(side="right", padx=12)
+
+        # --- Текстовый блок логов ---
+        self._textbox = ctk.CTkTextbox(
+            self,
+            font=ctk.CTkFont(family="Menlo", size=11),
+            fg_color=COLORS["bg_card"],
+            text_color="#c8d3f5",
+            corner_radius=0,
+            state="disabled",
+            wrap="none",
+        )
+        self._textbox.pack(fill="both", expand=True, padx=0, pady=0)
+
+        # Теги для раскраски строк stderr красным
+        self._textbox._textbox.tag_config("stderr", foreground="#ff6b6b")
+        self._textbox._textbox.tag_config("info",   foreground="#c8d3f5")
+        self._textbox._textbox.tag_config("muted",  foreground="#555577")
+
+        # --- Запускаем потоки чтения ---
+        threading.Thread(
+            target=self._drain, args=(process.stdout, "info"),  daemon=True
+        ).start()
+        threading.Thread(
+            target=self._drain, args=(process.stderr, "stderr"), daemon=True
+        ).start()
+        # Поток ожидания завершения процесса
+        threading.Thread(target=self._watch_exit, daemon=True).start()
+
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    # --- Внутренние методы ---
+
+    def _append(self, text: str, tag: str = "info"):
+        """Добавляет строку в textbox (потокобезопасно)."""
+        def _do():
+            self._textbox.configure(state="normal")
+            self._textbox._textbox.insert("end", text, tag)
+            self._textbox._textbox.see("end")
+            self._textbox.configure(state="disabled")
+        try:
+            self.after(0, _do)
+        except Exception:
+            pass  # Окно уже закрыто
+
+    def _drain(self, pipe, tag: str):
+        """Читает строки из трубы и добавляет в textbox."""
+        try:
+            for line in pipe:
+                if not self._running:
+                    break
+                self._append(line, tag)
+        except (ValueError, OSError):
+            pass  # Труба закрыта
+
+    def _watch_exit(self):
+        """Ждёт завершения процесса и обновляет статус."""
+        code = self._process.wait()
+        color = COLORS["text_muted"] if code == 0 else COLORS["accent"]
+        label = f"● Завершён (код {code})"
+        self._append(f"\n[ЛАУНЧЕР] Minecraft завершился с кодом {code}\n", "stderr" if code != 0 else "muted")
+        try:
+            self.after(0, lambda: self._status_dot.configure(text=label, text_color=color))
+        except Exception:
+            pass
+
+    def _clear(self):
+        self._textbox.configure(state="normal")
+        self._textbox.delete("1.0", "end")
+        self._textbox.configure(state="disabled")
+
+    def _on_close(self):
+        self._running = False
+        self.destroy()
+
+
 class ShizotehLauncher(ctk.CTk):
     """Главное окно лаунчера."""
 
@@ -60,6 +181,8 @@ class ShizotehLauncher(ctk.CTk):
         self.remote_config: dict | None = None
         self.server_info: ServerInfo | None = None
         self.is_working = False
+        self._mc_process: "subprocess.Popen | None" = None
+        self._log_window: MinecraftLogWindow | None = None
 
         # Строим UI
         self._build_ui()
@@ -277,9 +400,13 @@ class ShizotehLauncher(ctk.CTk):
         self.progress_bar.pack(fill="x", pady=(0, 10))
         self.progress_bar.set(0)
 
+        # Нижний ряд: кнопки
+        buttons_row = ctk.CTkFrame(bottom_frame, fg_color="transparent")
+        buttons_row.pack(fill="x")
+
         # Кнопка ИГРАТЬ
         self.play_button = ctk.CTkButton(
-            bottom_frame,
+            buttons_row,
             text="▶  ИГРАТЬ",
             font=ctk.CTkFont(size=18, weight="bold"),
             fg_color=COLORS["accent"],
@@ -289,7 +416,25 @@ class ShizotehLauncher(ctk.CTk):
             corner_radius=10,
             command=self._on_play_click,
         )
-        self.play_button.pack(fill="x")
+        self.play_button.pack(side="left", fill="x", expand=True, padx=(0, 8))
+
+        # Кнопка Логи
+        self.logs_button = ctk.CTkButton(
+            buttons_row,
+            text="📋 Логи",
+            font=ctk.CTkFont(size=14),
+            fg_color=COLORS["bg_card"],
+            hover_color=COLORS["border"],
+            border_color=COLORS["border"],
+            border_width=1,
+            text_color=COLORS["text_secondary"],
+            height=50,
+            width=90,
+            corner_radius=10,
+            state="disabled",
+            command=self._open_log_window,
+        )
+        self.logs_button.pack(side="right")
 
     # === Callbacks ===
 
@@ -543,15 +688,30 @@ class ShizotehLauncher(ctk.CTk):
             time.sleep(1.5)
             exit_code = process.poll()
             if exit_code is not None:
-                # communicate() дочитывает stderr и забирает завершившийся процесс,
-                # чтобы он не оставался зомби в системе.
-                _, stderr = process.communicate(timeout=5)
-                stderr_data = stderr.decode("utf-8", errors="replace").strip() if stderr else ""
+                # Процесс упал — читаем stderr (текстовый режим, уже str)
+                stderr_data = ""
+                if process.stderr:
+                    try:
+                        stderr_data = process.stderr.read().strip()
+                    except Exception:
+                        pass
                 err_msg = stderr_data if stderr_data else f"Процесс завершился с кодом {exit_code}"
                 self._set_status(f"❌ Ошибка запуска (код {exit_code})")
-                messagebox.showerror("ШИЗОТЕХ — Ошибка запуска", f"Minecraft завершился сразу после запуска (код {exit_code}):\n\n{err_msg[:1000]}")
+                messagebox.showerror(
+                    "ШИЗОТЕХ — Ошибка запуска",
+                    f"Minecraft завершился сразу после запуска (код {exit_code}):\n\n{err_msg[:1000]}"
+                )
             else:
                 self._set_status(f"✅ Minecraft запущен! (PID: {process.pid})")
+                self._mc_process = process
+                # Активируем кнопку логов
+                self.after(0, lambda: self.logs_button.configure(
+                    state="normal",
+                    text_color=COLORS["text_primary"],
+                    fg_color=COLORS["bg_input"],
+                ))
+                # Открываем окно логов автоматически
+                self.after(200, self._open_log_window)
 
         except Exception as e:
             self._set_status(f"❌ Ошибка: {e}")
@@ -559,3 +719,13 @@ class ShizotehLauncher(ctk.CTk):
 
         finally:
             self._set_working(False)
+
+    def _open_log_window(self):
+        """Открывает (или поднимает наверх) окно с логами Minecraft."""
+        if self._mc_process is None:
+            return
+        if self._log_window is not None and self._log_window.winfo_exists():
+            self._log_window.lift()
+            self._log_window.focus()
+            return
+        self._log_window = MinecraftLogWindow(self, self._mc_process)

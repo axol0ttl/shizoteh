@@ -756,14 +756,18 @@ def launch_minecraft(
         status_callback(f"Запуск Minecraft... ({username} → {server_host}:{server_port})")
 
     # Запускаем процесс.
-    # stdout НЕ перехватываем (DEVNULL), иначе буфер трубы переполняется
-    # от обилия логов Minecraft и процесс подвисает / становится зомби.
-    # stderr перехватываем в PIPE, чтобы поймать ошибки запуска.
+    # stdout и stderr перехватываем в PIPE для отображения в окне логов.
+    # Чтение из труб ведётся в отдельных потоках (см. gui.py),
+    # чтобы буферы не переполнялись и процесс не зависал.
     process = subprocess.Popen(
         cmd,
         cwd=game_dir,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        bufsize=1,           # Построчная буферизация
+        text=True,           # Текстовый режим (str вместо bytes)
+        encoding="utf-8",
+        errors="replace",
     )
 
     return process
