@@ -1,8 +1,8 @@
 # ШИЗОТЕХ
-### SHIZOTEH
+## SHIZOTEH
 
 - Лаунчер для игры на сервере Minecraft с функцией установки, проверки модов на факт установки их на клиенте, ориентируясь на файлы, расположенные в этом же репозитории.
-- Launcher for proper playing on Minecraft server with mods installing (also checking their installation status on client side) functions.
+- Launcher for playing on Minecraft server with mods installing (also checking their installation status on client side) functions.
 
    ---
 >[!WARNING]
